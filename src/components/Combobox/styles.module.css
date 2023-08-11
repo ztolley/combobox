@@ -1,16 +1,21 @@
-.container {
-  margin: 1rem auto;
-  max-width: 20rem;
+.combobox {
+  display: inline-flex;
+  border: 1px solid transparent;
+}
+
+.combobox:hover {
+  border: 1px solid #333;
 }
 
 .input {
   display: inline-block;
+  font-size: 1rem;
   margin: 0;
   color: #fff;
   padding: 0.5rem 1rem;
   background: #000;
-  width: 100% - 3rem;
   border: none;
+  flex-grow: 1;
 
   &:focus {
     outline: none;
@@ -18,19 +23,29 @@
 }
 
 .expandButton {
-  width: 3rem;
   color: white;
   margin: 0;
-  padding: 0.5rem;
+  padding: 0;
   text-align: center;
   background: #000;
   border: none;
+}
+
+.expandButton svg {
+  transition: all 0.2s ease-in;
+}
+
+.expandButton.open > svg {
+  transform: rotate(180deg);
 }
 
 .suggestions {
   margin: 0;
   padding: 0;
   list-style: none;
+  position: absolute;
+
+  transform: translate3d(0px, 35px, 0);
 }
 
 .suggestion {

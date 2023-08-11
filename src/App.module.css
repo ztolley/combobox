@@ -1,0 +1,9 @@
+.app {
+  padding: 5rem;
+}
+
+.appContainer {
+  display: block;
+  width: 20rem;
+  margin: 0 auto;
+}
