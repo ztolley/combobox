@@ -1,91 +1,11 @@
-import { useCallback, useMemo, useReducer, useRef } from 'react'
-import styles from './styles.module.css'
+import { useMemo, useRef, useState } from 'react'
 import { ArrowDownFilled } from './ArrowDownFilled'
+import { ClearX } from './ClearX'
+import styles from './styles.module.css'
 
 export interface Option {
   id: number
   name: string
-}
-
-interface State {
-  options: Option[]
-  searchPhrase: string
-  selectedOption?: Option
-  showSuggestions: boolean
-  suggestions: Option[]
-}
-
-const initialState: State = {
-  options: [],
-  searchPhrase: '',
-  showSuggestions: false,
-  suggestions: [],
-}
-
-interface UPDATE_SEARCH_PHRASE {
-  type: 'UPDATE_SEARCH_PHRASE'
-  payload: string
-}
-
-interface SHOW_SUGGESTIONS {
-  type: 'SHOW_SUGGESTIONS'
-}
-
-interface HIDE_SUGGESTIONS {
-  type: 'HIDE_SUGGESTIONS'
-}
-
-interface SET_SELECTED_OPTION {
-  type: 'SET_SELECTED_OPTION'
-  payload: Option
-}
-
-type Action =
-  | UPDATE_SEARCH_PHRASE
-  | SHOW_SUGGESTIONS
-  | HIDE_SUGGESTIONS
-  | SET_SELECTED_OPTION
-
-const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case 'SHOW_SUGGESTIONS':
-      return {
-        ...state,
-        showSuggestions: true,
-      }
-    case 'HIDE_SUGGESTIONS':
-      return {
-        ...state,
-        showSuggestions: false,
-      }
-    case 'SET_SELECTED_OPTION':
-      return {
-        ...state,
-        showSuggestions: false,
-        selectedOption: action.payload,
-      }
-    case 'UPDATE_SEARCH_PHRASE':
-      // Update the phrase so it is visible in the input
-      // But also, if the suggestions were invisible and we are going from an
-      // emopty phrase to a non-empty phrase, we want to show the suggestions
-      // Also, filter the suggestions based on the phrase
-      return {
-        ...state,
-        showSuggestions:
-          state.searchPhrase.length === 0 && action.payload.length > 0
-            ? true
-            : state.showSuggestions,
-        searchPhrase: action.payload,
-        suggestions:
-          action.payload.length > 0
-            ? state.options.filter((option) =>
-                option.name.includes(action.payload)
-              )
-            : state.options,
-      }
-    default:
-      return state
-  }
 }
 
 export const Combobox: React.FC<{
@@ -93,53 +13,154 @@ export const Combobox: React.FC<{
   onChange: (option: Option) => void
   options: Option[]
 }> = ({ options }) => {
-  const [state, dispatch] = useReducer(reducer, {
-    ...initialState,
-    options,
-  })
-
-  const { searchPhrase, showSuggestions, suggestions } = state
+  const [hoveredOption, setHoveredOption] = useState<Option>()
+  const [searchPhrase, setSearchPhrase] = useState<string>('')
+  const [selectedOption, setSelectedOption] = useState<Option>()
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+
+  const suggestions = useMemo(() => {
+    if (searchPhrase.length === 0 || selectedOption) return options
+    return options.filter((option) =>
+      option.name.toLocaleLowerCase().includes(searchPhrase.toLocaleLowerCase())
+    )
+  }, [options, searchPhrase, selectedOption])
 
   const onInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch({ type: 'UPDATE_SEARCH_PHRASE', payload: event.target.value })
+    const value = event.target.value
+    setSearchPhrase(value)
+
+    if (value.length !== searchPhrase.length) {
+      setShowSuggestions(true)
+    }
+  }
+
+  // Cancelling the button mouse down event prevents the input from losing focus
+  const onButtonMousedown: React.MouseEventHandler<HTMLButtonElement> = (
+    event
+  ) => {
+    event.preventDefault()
+  }
+
+  const onFocus = () => {
+    setShowSuggestions(true)
+  }
+
+  const onBlur: React.FocusEventHandler<HTMLInputElement> = (event) => {
+    // if the event is triggered by clicking on the toggle button then cancel the blur event
+    if (event.relatedTarget === toggleRef.current) {
+      event.preventDefault()
+    }
+
+    setShowSuggestions(false)
+
+    if (!selectedOption) {
+      setSearchPhrase('')
+    }
+  }
+
+  const onSelectNext = () => {
+    if (!showSuggestions) return
+
+    if (!hoveredOption) {
+      setHoveredOption(suggestions[0])
+      return
+    }
+
+    const index = suggestions.findIndex(
+      (suggestion) => suggestion.id === hoveredOption.id
+    )
+    if (index === -1) return
+    if (index === suggestions.length - 1) {
+      setHoveredOption(suggestions[0])
+      return
+    }
+
+    setHoveredOption(suggestions[index + 1])
+  }
+
+  const onSelectPrevious = () => {
+    if (!showSuggestions) return
+
+    if (!hoveredOption) {
+      setHoveredOption(suggestions[suggestions.length - 1])
+      return
+    }
+
+    const index = suggestions.findIndex(
+      (suggestion) => suggestion.id === hoveredOption.id
+    )
+
+    if (index === -1) return
+
+    if (index === 0) {
+      setHoveredOption(suggestions[suggestions.length - 1])
+      return
+    }
+
+    setHoveredOption(suggestions[index - 1])
   }
 
   const onPickOption = (option: Option) => {
-    dispatch({ type: 'SET_SELECTED_OPTION', payload: option })
+    setSelectedOption(option)
+    setSearchPhrase(option.name)
+    setShowSuggestions(false)
+  }
+
+  const onPickHoveredOption = () => {
+    if (!hoveredOption || !showSuggestions) return
+    onPickOption(hoveredOption)
+  }
+
+  const onKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (event) => {
+    // arrow up/down button should select next/previous list element
+    if (event.key === 'ArrowUp') {
+      onSelectPrevious()
+    } else if (event.key === 'ArrowDown') {
+      onSelectNext()
+    } else if (event.key === 'Enter') {
+      onPickHoveredOption()
+    }
+  }
+
+  const onClear = () => {
+    setSelectedOption(undefined)
+    setSearchPhrase('')
+    setShowSuggestions(false)
+  }
+
+  const onToggle = () => {
+    setShowSuggestions((ss) => !ss)
+    inputRef.current?.focus()
   }
 
   const { height, width } = useMemo(() => {
     if (!containerRef.current) return { height: 0, width: 0 }
     return {
-      height: containerRef.current.getBoundingClientRect().height,
+      height: containerRef.current.getBoundingClientRect().height + 2,
       width: containerRef.current.getBoundingClientRect().width,
     }
   }, [containerRef.current])
 
-  const onToggle = useCallback(() => {
-    if (showSuggestions) {
-      dispatch({ type: 'HIDE_SUGGESTIONS' })
-    } else {
-      dispatch({ type: 'SHOW_SUGGESTIONS' })
-    }
-  }, [])
-
-  console.log(state)
-
   return (
     <div
+      ref={containerRef}
       className={styles.combobox}
       data-component="Combobox"
-      ref={containerRef}
     >
       <input
+        ref={inputRef}
         data-testid="combobox-text-input"
         className={styles.input}
         type="text"
-        defaultValue={searchPhrase}
+        value={searchPhrase}
+        onBlur={onBlur}
         onChange={onInputChange}
+        onFocus={onFocus}
+        onKeyDown={onKeyDown}
         autoComplete="off"
         autoCapitalize="none"
         spellCheck="false"
@@ -147,11 +168,26 @@ export const Combobox: React.FC<{
         aria-expanded={showSuggestions}
         aria-controls="combobox-suggestions"
       />
+
+      {searchPhrase.length > 0 && (
+        <button
+          className={styles.clearButton}
+          type="button"
+          onMouseDown={onButtonMousedown}
+          onClick={onClear}
+        >
+          <ClearX />
+        </button>
+      )}
+
       <button
+        ref={toggleRef}
+        data-testid="combobox-toggle-button"
         type="button"
         className={`${styles.expandButton} ${
           showSuggestions ? styles.open : ''
         }`}
+        onMouseDown={onButtonMousedown}
         onClick={onToggle}
       >
         <ArrowDownFilled />
@@ -166,10 +202,16 @@ export const Combobox: React.FC<{
           }}
         >
           {suggestions.map((suggestion) => (
-            <li key={suggestion.id} className={styles.suggestion}>
+            <li
+              key={suggestion.id}
+              className={`${styles.suggestion} ${
+                suggestion === hoveredOption ? styles.selected : ''
+              }`}
+            >
               <button
                 type="button"
                 className={styles.suggestionButton}
+                onMouseDown={onButtonMousedown}
                 onClick={() => onPickOption(suggestion)}
               >
                 {suggestion.name}

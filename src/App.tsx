@@ -5,15 +5,15 @@ import styles from './App.module.css'
 const options: Option[] = [
   {
     id: 1,
-    name: 'Option 1',
+    name: 'Fred',
   },
   {
     id: 2,
-    name: 'Option 2',
+    name: 'Barney',
   },
   {
     id: 3,
-    name: 'Option 3',
+    name: 'Wilma',
   },
 ]
 

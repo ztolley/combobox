@@ -1,10 +1,12 @@
 .combobox {
   display: inline-flex;
   border: 1px solid transparent;
+  width: 100%;
 }
 
-.combobox:hover {
-  border: 1px solid #333;
+.combobox:hover,
+.combobox:focus-within {
+  border: 1px solid #fff;
 }
 
 .input {
@@ -22,13 +24,15 @@
   }
 }
 
-.expandButton {
+.expandButton,
+.clearButton {
   color: white;
   margin: 0;
   padding: 0;
   text-align: center;
   background: #000;
   border: none;
+  cursor: pointer;
 }
 
 .expandButton svg {
@@ -53,6 +57,10 @@
   margin: 0;
   padding: 0;
   border-bottom: 1px solid #333;
+}
+
+.suggestion.selected .suggestionButton {
+  background: #333;
 }
 
 .suggestionButton {
